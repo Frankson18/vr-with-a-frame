@@ -1,0 +1,401 @@
+<html>
+   <head>
+      <meta aframe-injected="" name="mobile-web-app-capable" content="yes" />
+      <meta aframe-injected="" name="theme-color" content="black" />
+      <meta
+         aframe-injected=""
+         name="viewport"
+         content="width=device-width,initial-scale=1,maximum-scale=1,shrink-to-fit=no,user-scalable=no,minimal-ui,viewport-fit=cover"
+         />
+      <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+      <style>
+         .a-enter-move {
+         position: absolute;
+         bottom: 20px;
+         left: 20px;
+         z-index: 999;
+         }
+         .a-enter-move-button {
+         background-color: #333;
+         color: white;
+         border: none;
+         padding: 15px;
+         font-size: 16px;
+         cursor: pointer;
+         border-radius: 5px;
+         }
+         .a-enter-move-button:hover {
+         background-color: #555;
+         }
+      </style>
+      <script>
+         // Componente para mover a câmera sempre para frente
+         AFRAME.registerComponent('move-always-forward', {
+           schema: {
+             speed: { type: 'number', default: 0.05 },
+             isActive: { type: 'boolean', default: true }
+           },
+           tick: function () {
+             if (this.data.isActive) {
+               var position = this.el.object3D.position;
+               if (position.z <= -50) {
+                 position.z = 0;
+               }
+               position.z -= this.data.speed;
+             }
+           },
+           toggleMovement: function () {
+             this.data.isActive = !this.data.isActive;
+           }
+         });
+         
+         
+          // Componente para controlar o movimento da câmera com o teclado
+         AFRAME.registerComponent('keyboard-controls', {
+           schema: {
+             active: { type: 'boolean', default: false }
+           },
+           init: function () {
+             window.addEventListener('keydown', (event) => {
+               if (this.data.active) {
+                 const camera = this.el.object3D;
+                 const speed = 0.1; // velocidade do movimento
+                 switch (event.key) {
+                   case 'w':
+                     camera.position.z -= speed;
+                     break;
+                   case 's':
+                     camera.position.z += speed;
+                     break;
+                   case 'a':
+                     camera.position.x -= speed;
+                     break;
+                   case 'd':
+                     camera.position.x += speed;
+                     break;
+                 }
+               }
+             });
+           },
+           toggleKeyboardControl: function () {
+             this.data.active = !this.data.active;
+           }
+         });
+         
+         
+         // Função para alternar entre movimento automático e controle por teclado
+         function toggleMove() {
+           var cameraEl = document.querySelector('[camera]');
+           cameraEl.components['move-always-forward'].toggleMovement();
+           cameraEl.components['keyboard-controls'].toggleKeyboardControl();
+         }
+         
+         
+         // Componente que acende múltiplas luzes ao chegar perto
+         AFRAME.registerComponent('proximity-lights', {
+         schema: {
+          targets: { type: 'array' }, 
+          distance: { type: 'number', default: 1 }
+         },
+         
+         init: function () {
+          
+          this.lights = this.data.targets.map(target => document.querySelector(target));
+         },
+         
+         tick: function () {
+          var cameraPositionZ = this.el.object3D.position.z; 
+         
+          
+          this.lights.forEach(light => {
+            if (light) {
+              var lightPositionZ = light.object3D.position.z; 
+              var distance = Math.abs(cameraPositionZ - lightPositionZ); 
+         
+              
+              if (distance < this.data.distance) {
+                light.setAttribute('light', 'intensity', 1); 
+              } else {
+                light.setAttribute('light', 'intensity', 0); 
+              }
+            }
+          });
+         }
+         });
+         
+         var isDragging = false;
+         var yaw = 0; 
+         var pitch = 0; 
+         var lastMouseX = 0;
+         var lastMouseY = 0;
+         
+         
+         function onMouseDown(event) {
+         isDragging = true;
+         lastMouseX = event.clientX;
+         lastMouseY = event.clientY;
+         }
+         
+         
+         function onMouseUp() {
+         isDragging = false;
+         }
+         
+         
+         function onMouseMove(event) {
+         if (isDragging) {
+         var deltaX = event.clientX - lastMouseX;
+         var deltaY = event.clientY - lastMouseY;
+         
+         lastMouseX = event.clientX;
+         lastMouseY = event.clientY;
+         
+         
+         yaw -= deltaX * 0.1; 
+         pitch -= deltaY * 0.1; 
+         
+         
+         pitch = Math.max(-90, Math.min(90, pitch));
+         
+         
+         var camera = document.querySelector('[camera]').object3D;
+         camera.rotation.set(
+         THREE.Math.degToRad(pitch),
+         THREE.Math.degToRad(yaw),
+         0
+         );
+         }
+         }
+         
+         
+         window.addEventListener('mousedown', onMouseDown);
+         window.addEventListener('mouseup', onMouseUp);
+         window.addEventListener('mousemove', onMouseMove);
+         
+         
+         window.addEventListener('load', function () {
+         var cameraEl = document.querySelector('[camera]');
+         
+         
+         cameraEl.setAttribute('keyboard-controls', 'enabled', true);
+         
+         
+         if (isMobile()) {
+         cameraEl.setAttribute('keyboard-controls', 'enabled', false);
+         }
+         });
+      </script>
+   </head>
+   <body>
+      <a-scene>
+         <a-asset-item 
+            id="iluminado"
+            src="https://raw.githubusercontent.com/Frankson18/vr-with-a-frame/refs/heads/main/assets/hanbok/2009_0120_001-150k-4096.gltf">
+         </a-asset-item>
+         <a-entity>
+            <a-entity 
+               rotation="0 0 0" 
+               scale="4 4 4" 
+               position="-1.2 2.5 -49"
+               gltf-model="#iluminado"
+               modify-materials>
+            </a-entity>
+            <a-entity 
+               rotation="0 0 0" 
+               scale="4 4 4" 
+               position="1.2 2.5 -49"
+               gltf-model="#iluminado"
+               modify-materials>
+            </a-entity>
+         </a-entity>
+         <a-plane
+            static-body
+            position="0 0 -4"
+            rotation="-90 0 0"
+            width="100"
+            height="100"
+            color="red">
+         </a-plane>
+         <!--         look-controls -->
+         <a-entity 
+            camera 
+            position="0 5 0"
+            move-always-forward="speed: 0.01"
+            keyboard-controls="active: false"
+            proximity-lights="targets: #light1, #light2, #light3, #light4, #light5, #light6; distance: 4">
+            <a-entity 
+               cursor="fuse: true; fuseTimeout: 500"
+               position="0 0 -1"
+               geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
+               material="color: black; shader: flat">
+            </a-entity>
+         </a-entity>
+         <a-box position="-7.5 5 -5" depth="100" height="10" width="0.2" color="black"></a-box>
+         <a-box position="7.5 5 -5" depth="100" height="10" width="0.2" color="black"></a-box>
+         <a-box position="0 10 -5" depth="100" height="0.2" width="15.2" color="black"></a-box>
+         <a-box position="-7.5 5 -5" depth="15" height="10" width="0.2" color="black"></a-box>
+         <a-box position="0 5 -50" rotation="0 -90 0" depth="15" height="10" width="0.2" color="black" material="shader: flat; metalness: 0; roughness: 1;"></a-box>
+         <a-box position="0 5 5" rotation="0 -90 0" depth="15" height="10" width="0.2" color="black" material="shader: flat; metalness: 0; roughness: 1;"></a-box>
+         <a-entity 
+            id="light1"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -5">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/original/lqTVfL68X937Gtd4rlgEmwiDDHI.jpg" 
+            position="-7.3 5 -5" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/4p8ljwqw0SJjKszU0ZSPTjYFbeR.jpg" 
+            position="7.3 5 -5" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-entity 
+            id="light2"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -13">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/zUgqgpcbDm7bMRCT208gNNTAOQt.jpg" 
+            position="-7.3 5 -13" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/original/2b6oBVkLAmhDlVHWlgIfWomOUMv.jpg" 
+            position="7.3 5 -13" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-entity 
+            id="light3"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -21">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/5ya8jTbNZTrCFUx9OwpNBjCivXY.jpg" 
+            position="-7.3 5 -21" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/ozkOzFITxLmp5nkjvuawQaRHNF3.jpg" 
+            position="7.3 5 -21" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-sky
+            src="https://images.vexels.com/media/users/3/221369/raw/5468fb9596321efd642257f214e4f740-sky-at-night-background-design.jpg">
+         </a-sky>
+         <a-entity 
+            id="light4"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -29">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/7ceEaLciLfksJkSHqp0vLE5eLyy.jpg" 
+            position="-7.3 5 -29" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/dVYBZo9sqHrLcM3F32urM5ru0k1.jpg" 
+            position="7.3 5 -29" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-entity 
+            id="light5"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -37">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/original/7RDDRv4A4wb85U4QEx2OsRWbCH1.jpg" 
+            position="-7.3 5 -37" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/cJj2gYzkPFSqYGGOhfLgeANlXkB.jpg" 
+            position="7.3 5 -37" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-entity 
+            id="light6"
+            light="type: point; color: #FFF; intensity: 0"
+            position="0 5 -45">
+         </a-entity>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/AuRS2V8LHF1aKJUUQdVzyCm9afs.jpg" 
+            position="-7.3 5 -45" 
+            rotation="0 90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-image 
+            src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/ds7jw0WYCd6k7hBzMnzgFsTfg96.jpg" 
+            position="7.3 5 -45" 
+            rotation="0 -90 0" 
+            width="3" 
+            height="5"
+            material="shader: standard; color: white; metalness: 0.1; roughness: 0.9">
+         </a-image>
+         <a-sky
+            src="https://images.vexels.com/media/users/3/221369/raw/5468fb9596321efd642257f214e4f740-sky-at-night-background-design.jpg">
+         </a-sky>
+         <div class="a-enter-vr" aframe-injected="">
+            <button
+               class="a-enter-vr-button"
+               title="Enter VR mode with a headset 
+               or fullscreen mode on a desktop. 
+               Visit https://webvr.rocks or https://webvr.info for more information."
+               aframe-injected=""
+               ></button>
+         </div>
+         <div class="a-enter-ar a-hidden" aframe-injected="">
+            <button
+               class="a-enter-ar-button"
+               title="Enter AR mode with a headset or handheld device. Visit https://webvr.rocks or https://webvr.info for more information."
+               aframe-injected=""
+               ></button>
+         </div>
+         <div class="a-orientation-modal a-hidden" aframe-injected="">
+            <button aframe-injected="">Exit VR</button>
+         </div>
+      </a-scene>
+      <div class="a-enter-move">
+         <button
+            class="a-enter-move-button"
+            onclick="toggleMove()"
+            title="Toggle movement between auto and manual">
+         Toggle Movement
+         </button>
+      </div>
+   </body>
+</html>
